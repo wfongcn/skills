@@ -1,403 +1,198 @@
-# Section 5: Building Block View
+# Section 5: 构建块视图 (Building Block View)
 
-## Purpose
+## 目的
 
-Show the static decomposition of the system into building blocks (modules, components, classes, packages). This is the most important structural view of the architecture.
+展示系统的静态分解为构建块，使用 C4 Model。
 
-## Levels of Abstraction
+## C4 语法
 
-### Level 1: System Overview (MANDATORY)
-- The entire system as one black box
-- Shows major subsystems/components
-- Maximum 7±2 elements
+### Level 1: C4Context
 
-### Level 2: Major Components
-- Decomposition of Level 1 elements
-- Shows internal structure
-- Only decompose what's architecturally significant
+系统上下文图，展示系统与外部的关系：
 
-### Level 3: Detailed Internals
-- Rarely needed
-- Only for complex components
-- Usually better in code documentation
+```mermaid
+C4Context
+    title Context Diagram for [System]
 
-## Format
+    Person(user, "用户", "使用系统的人")
+    Person_Ext(ext_user, "外部用户", "外部系统用户")
 
-### Level 1 Template
+    System_Boundary(system, "[系统名称]") {
+        System(main, "主系统", "核心业务")
+    }
+
+    System_Ext(ext, "外部系统", "第三方服务")
+
+    Rel(user, main, "使用")
+    Rel(main, ext, "调用")
+```
+
+### Level 2: C4Container
+
+容器图，展示技术构建块：
+
+```mermaid
+C4Container
+    title Container Diagram for [System]
+
+    Person(user, "用户", "使用系统")
+
+    System_Boundary(system, "[系统]") {
+        Container(app, "应用", "TypeScript", "用户界面")
+        Container(api, "API", "Node.js", "业务逻辑")
+        ContainerDb(db, "数据库", "PostgreSQL", "数据存储")
+    }
+
+    System_Ext(ext, "外部服务", "API")
+
+    Rel(user, app, "使用")
+    Rel(app, api, "HTTP")
+    Rel(api, db, "JDBC")
+    Rel(api, ext, "REST")
+```
+
+### Level 3: C4Component
+
+组件图，展示容器内部结构：
+
+```mermaid
+C4Component
+    title Component Diagram for [Container]
+
+    ContainerDb(db, "数据库", "PostgreSQL", "存储")
+
+    Container_Boundary(container, "[容器]") {
+        Component(controller, "控制器", "处理请求")
+        Component(service, "服务层", "业务逻辑")
+        Component(repo, "仓库", "数据访问")
+    }
+
+    Rel(controller, service, "调用")
+    Rel(service, repo, "使用")
+    Rel(repo, db, "JDBC")
+```
+
+---
+
+## 图表拆分原则
+
+### 按场景拆分
+
+每个图表应该聚焦一个场景：
+
+**第 3 章**：按用户角色
+- 场景 A: 开发者使用 CLI
+- 场景 B: Web 用户
+- 场景 C: 运维管理
+
+**第 5 章**：按组件/子系统
+- 5.1 系统全景 (Level 1)
+- 5.2 场景 A 架构 (Level 2)
+- 5.3 场景 B 架构 (Level 2)
+- 5.4 组件 X (Level 3)
+- 5.5 组件 Y (Level 3)
+
+---
+
+## Pi Mono 示例
+
+### 5.1 系统全景 (Level 1)
+
+```mermaid
+C4Context
+    title System Context for Pi Mono
+
+    Person(dev, "开发者", "使用 CLI")
+    Person(slack, "Slack 用户", "消息交互")
+    Person(ops, "运维", "管理集群")
+
+    System_Boundary(pi, "Pi Mono") {
+        System(pi_system, "Pi Mono", "AI Agent")
+    }
+
+    System_Ext(openai, "OpenAI", "LLM")
+    System_Ext(slack, "Slack", "消息")
+
+    Rel(dev, pi_system, "使用")
+    Rel(slack, slack, "消息")
+    Rel(slack, pi_system, "Webhook")
+    Rel(pi_system, openai, "API")
+```
+
+### 5.2 开发者场景 (Level 2)
+
+```mermaid
+C4Container
+    title Container for Developer Scenario
+
+    Person(dev, "开发者", "使用 CLI")
+
+    System_Boundary(pi, "Pi Mono") {
+        Container(cli, "pi-coding-agent", "CLI", "编程工具")
+        Container(tui, "pi-tui", "UI", "终端渲染")
+        Container(agent, "pi-agent-core", "Runtime", "运行时")
+        Container(ai, "pi-ai", "API", "LLM 抽象")
+    }
+
+    System_Ext(openai, "OpenAI", "LLM")
+
+    Rel(dev, cli, "使用")
+    Rel(dev, tui, "使用")
+    Rel(cli, agent, "调用")
+    Rel(tui, agent, "调用")
+    Rel(agent, ai, "调用")
+    Rel(ai, openai, "API")
+```
+
+### 5.3 pi-ai 组件 (Level 3)
+
+```mermaid
+C4Component
+    title Component for pi-ai
+
+    System_Ext(openai, "OpenAI API", "GPT")
+    System_Ext(anthropic, "Anthropic API", "Claude")
+
+    Container_Boundary(ai, "pi-ai") {
+        Component(client, "LLMClient", "统一入口")
+        Component(registry, "ProviderRegistry", "注册表")
+    }
+
+    Component_Boundary(providers, "Providers") {
+        Component(openai_p, "OpenAIProvider", "适配器")
+        Component(anthropic_p, "AnthropicProvider", "适配器")
+    }
+
+    Rel(client, registry, "获取")
+    Rel(registry, openai_p, "注册")
+    Rel(registry, anthropic_p, "注册")
+    Rel(openai_p, openai, "HTTP")
+    Rel(anthropic_p, anthropic, "HTTP")
+```
+
+---
+
+## 组件说明格式
+
+每个图表后添加说明：
 
 ```markdown
-### 5.1 Building Block Level-1
+**组件说明：**
 
-```
-+------------------+         +------------------+
-|   [Component A]  |---------|   [Component B]  |
-+------------------+         +------------------+
-         |                            |
-         |                            |
-         v                            v
-+------------------+         +------------------+
-|   [Component C]  |---------|   [Component D]  |
-+------------------+         +------------------+
-```
+| 组件 | 职责 | 设计要点 |
+|------|------|----------|
+| **组件名** | 职责描述 | 设计要点 |
 
-**Responsibilities:**
-| Component | Responsibility |
-|-----------|---------------|
-| Component A | [Single sentence description] |
-
-**Interfaces:**
-| Interface | Component | Description |
-|-----------|-----------|-------------|
-| IF-1 | Component A -> Component B | [What is exchanged] |
-```
-
-### Level 2 Template (for selected components)
-
-```markdown
-### 5.2 Building Block Level-2: [Component Name]
-
-[Decomposition of one Level-1 component]
-```
-
-## Notation Options
-
-1. **C4 Model (Recommended)**
-   - Level 1 = System Context (系统上下文)
-   - Level 2 = Container diagram (容器图)
-   - Level 3 = Component diagram (组件图)
-
-2. **UML Component Diagram**
-   - Standard notation
-   - Good tool support
-
-3. **Simple Boxes and Lines**
-   - ASCII art or drawing
-   - Focus on clarity over notation
-
-## C4 Model with Mermaid
-
-### C4 Level-1: System Context Diagram (系统上下文图)
-
-展示系统与外部实体之间的关系。
-
-```mermaid
-flowchart LR
-    subgraph 外部实体
-        User[小学生]
-        Parent[家长]
-        Teacher[教师]
-    end
-
-    subgraph 知识冒险岛系统
-        App[Web应用]
-    end
-
-    subgraph 外部服务
-        AI[Claude API]
-        DeepSeek[DeepSeek API]
-    end
-
-    User -->|使用| App
-    Parent -->|监督| App
-    Teacher -->|管理| App
-    App -->|调用| AI
-    App -->|调用| DeepSeek
-```
-
-**Level-1 说明:**
-- 显示系统边界
-- 展示外部参与者（人）
-- 展示外部系统
-- 关系用动词描述
-
----
-
-### C4 Level-2: Container Diagram (容器图)
-
-展示系统内部的主要构建块（容器）。
-
-```mermaid
-flowchart TB
-    subgraph 前端容器
-        Browser[浏览器]
-        SPA[React SPA]
-        Router[路由]
-        State[状态管理]
-    end
-
-    subgraph 后端容器
-        MCP[MCP服务器]
-        Tools[工具集]
-    end
-
-    subgraph 外部服务
-        AI[Claude API]
-    end
-
-    Browser --> SPA
-    SPA --> Router
-    Router --> State
-    State --> MCP
-    MCP --> Tools
-    Tools --> AI
-```
-
-**Level-2 说明:**
-- 分解系统内部的主要进程/服务
-- 每个容器独立运行
-- 展示容器间通信
-- 标注协议 (HTTP, JSON-RPC, etc.)
-
----
-
-### C4 Level-3: Component Diagram (组件图)
-
-展示一个容器的内部组件。
-
-```mermaid
-flowchart TB
-    subgraph 前端组件
-        App[App.tsx]
-        Components[组件库]
-        Pages[页面]
-        Hooks[自定义Hooks]
-        API[API客户端]
-    end
-
-    App --> Components
-    App --> Pages
-    App --> Hooks
-    Hooks --> API
-    API --> Components
-```
-
-**Level-3 说明:**
-- 展示单个容器的内部结构
-- 分解到类/模块级别
-- 仅用于复杂容器
-- 通常代码文档更合适
-
----
-
-### 完整 C4 层级示例
-
-#### Level-1: 系统上下文
-```mermaid
-flowchart TB
-    subgraph 外部
-        Student[学生] --> System
-        Parent[家长] --> System
-    end
-
-    System[(知识冒险岛)] --> AI[AI服务]
-```
-
-#### Level-2: 容器
-```mermaid
-flowchart TB
-    subgraph System
-        Web[Web前端]
-        API[API网关]
-        Service[业务服务]
-        DB[数据库]
-    end
-
-    Web --> API
-    API --> Service
-    Service --> DB
-```
-
-#### Level-3: 组件 (以Web前端为例)
-```mermaid
-flowchart TB
-    subgraph Web前端
-        App[App入口]
-        Router[路由]
-        Store[状态]
-        UI[UI组件]
-    end
-
-    App --> Router
-    App --> Store
-    App --> UI
-    Store --> UI
+**流程：**
+1. 步骤1
+2. 步骤2
 ```
 
 ---
 
-### 实际应用示例
+## 检查清单
 
-#### Level-1 示例
-```mermaid
-flowchart TB
-    subgraph 用户层
-        User1[小学生]
-        User2[家长]
-        User3[教师]
-    end
-
-    subgraph 知识冒险岛
-        WebApp[Web应用]
-    end
-
-    subgraph 外部
-        AI[Claude]
-    end
-
-    User1 -->|学习| WebApp
-    User2 -->|监督| WebApp
-    User3 -->|管理| WebApp
-    WebApp -->|生成题目| AI
-```
-
-#### Level-2 示例
-```mermaid
-flowchart TB
-    subgraph 前端
-        Browser[浏览器]
-        React[React SPA]
-        Client[MCP客户端]
-    end
-
-    subgraph 后端
-        Server[MCP服务器]
-        Parser[内容解析]
-        Gen[题目生成]
-        Eval[答案评估]
-    end
-
-    subgraph AI
-        Claude[Claude API]
-    end
-
-    Browser --> React
-    React --> Client
-    Client --> Server
-    Server --> Parser
-    Server --> Gen
-    Server --> Eval
-    Gen --> Claude
-    Eval --> Claude
-```
-
-#### Level-3 示例 (前端组件)
-```mermaid
-flowchart TB
-    subgraph components
-        Character[角色选择]
-        Game[游戏界面]
-        Question[题目卡片]
-        Result[结果展示]
-    end
-
-    subgraph hooks
-        Speech[语音Hook]
-        Game[游戏Hook]
-    end
-
-    subgraph api
-        Client[API客户端]
-    end
-
-    Game --> Character
-    Game --> Question
-    Game --> Result
-    Question --> Speech
-    Game --> Game
-    Speech --> Client
-    Game --> Client
-```
-
-## Input Questions
-
-- What are the major subsystems/components?
-- What is the responsibility of each component?
-- How do components interact?
-- Which components are architecturally significant?
-- What interfaces exist between components?
-- Are there shared/common components?
-
-## Quality Checklist
-
-- [ ] Level 1 is provided (mandatory)
-- [ ] Each component has clear, single responsibility
-- [ ] Components are at similar abstraction level
-- [ ] Interfaces are documented
-- [ ] Diagram is not too crowded (max 7±2 elements)
-- [ ] Only architecturally significant details are shown
-- [ ] Naming is consistent with domain language
-
-## Common Mistakes
-
-❌ **Too many components at Level 1** (more than 7-9)  
-❌ **Mixed abstraction levels** (components and classes together)  
-❌ **Missing responsibilities** (just boxes)  
-❌ **No interfaces documented**  
-❌ **Showing everything** (not just architecturally significant)  
-❌ **Inconsistent naming**  
-❌ **Level 3 when not needed**
-
-## Example
-
-```markdown
-### 5.1 Building Block Level-1
-
-```
-+---------------------+     +---------------------+
-|   Order Service     |-----|  Payment Service    |
-|   (Spring Boot)     |     |  (Spring Boot)      |
-+---------------------+     +---------------------+
-           |                           |
-           | Events                    | API Calls
-           v                           v
-+---------------------+     +---------------------+
-|  Inventory Service  |     |  Notification Svc   |
-|  (Spring Boot)      |     |  (Node.js)          |
-+---------------------+     +---------------------+
-           |                           
-           | Query                     
-           v                           
-+---------------------+               
-|  PostgreSQL         |               
-|  (Primary DB)       |               
-+---------------------+               
-```
-
-**Responsibilities:**
-| Component | Responsibility |
-|-----------|---------------|
-| Order Service | Manages order lifecycle; validates orders; orchestrates checkout process |
-| Payment Service | Processes payments; handles refunds; integrates with payment providers |
-| Inventory Service | Tracks stock levels; reserves inventory; updates quantities |
-| Notification Service | Sends emails, SMS, push notifications; manages templates |
-
-**Interfaces:**
-| Interface | Between | Description |
-|-----------|---------|-------------|
-| Order Events | Order -> Inventory | OrderCreated, OrderCancelled events |
-| Payment API | Order -> Payment | REST API for payment processing |
-| Inventory Query | Order -> Inventory | gRPC for real-time stock checks |
-
-### 5.2 Building Block Level-2: Order Service
-
-```
-+------------------+     +------------------+     +------------------+
-|   Order API      |-----|  Order Service   |-----|  Order Repository |
-|   (Controller)   |     |  (Domain)        |     |  (Infrastructure) |
-+------------------+     +------------------+     +------------------+
-                                |
-                                v
-                         +------------------+
-                         |  Event Publisher |
-                         |  (Infrastructure)|
-                         +------------------+
-```
-
-**Responsibilities:**
-| Component | Responsibility |
-|-----------|---------------|
-| Order API | HTTP endpoints; request validation; DTO mapping |
-| Order Service | Business logic; order state machine; validation rules |
-| Order Repository | Database access; CRUD operations; query optimization |
-| Event Publisher | Publishes domain events to message bus |
-```
+- [ ] 使用 C4 语法 (C4Context/C4Container/C4Component)
+- [ ] 按场景拆分图表
+- [ ] 包含 Level 1/2/3 三层
+- [ ] 图表后有说明
